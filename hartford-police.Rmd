@@ -1,0 +1,196 @@
+---
+title: "Hartford Open Data: Live Police Incidents"
+output: 
+  flexdashboard::flex_dashboard:
+  orientation: columns
+vertical_layout: fill
+social: [ "twitter", "menu" ]
+source_code: embed
+runtime: shiny
+---
+  
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(DT)  # dev version devtools::install_github("rstudio/DT")
+library(leaflet)
+library(readr)
+library(lubridate)
+library(ggplot2)
+library(plotly)
+library(shiny)
+```
+
+Sidebar {.sidebar}
+=====================================
+  
+This dataset reflects reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis.
+
+
+```{r, shiny_in}
+# shiny inputs defined here
+selectInput("year", "<b>Select Year: </b>", choices =c(2005, 2006, 2007, 
+2008, 2009, 2010,
+2011, 2012, 2013, 
+2014, 2015) ,
+selected = 2015)
+
+```
+
+
+
+Explore
+=====================================
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+data_in <- read_csv("Police_Incidents_01012005_to_Current.csv") 
+##############################
+# clean up lat and longitude #
+##############################
+# removes the parenthesis
+s = gsub(".*\\((.*)\\).*", "\\1", data_in$geom)  
+# extract and split each f the tuple latitude and longitude
+lat_splat = sapply(s, function(x) strsplit(x, ",")[[1]][1])
+lon_splat = sapply(s, function(x) strsplit(x, ",")[[1]][2])
+# convert to data.frame
+lat <- as.data.frame(lat_splat)
+lon <- as.data.frame(lon_splat)
+# convert to factor to numeric
+options(digits=15)
+lat2 <- sapply(lat, function(x) as.numeric(levels(x))[x])
+lat2 <- as.data.frame(lat2)
+lon2 <- sapply(lon, function(x) as.numeric(levels(x))[x])
+lon2 <- as.data.frame(lon2)
+# add to main data frame
+data_in$lat <- lat2
+data_in$lon <- lon2 
+#################
+# clean up date #
+#################
+class(data_in$Date)
+data_in$Date <- mdy(data_in$Date)
+data_in$year <- year(data_in$Date)
+#####################
+# clean up category #
+#####################
+## grep out leader symbol
+data_in$UCR_1_Category <- gsub("[0-9]","", data_in$UCR_1_Category)
+data_in$UCR_1_Category <- gsub("[[:punct:]]","", data_in$UCR_1_Category)
+
+#######################################
+# subset data by date for explore tab #
+#######################################
+## so many points!! - use sample for now
+data_in <- as.data.frame(data_in)
+data_sample <- reactive({
+data_sample <- data_in[which(data_in$year == input$year), ] 
+data_sample
+})
+
+```
+
+
+### Map
+
+```{r, map}
+
+renderLeaflet({
+m <- leaflet(data=data_sample()) %>%
+setView(lng = -72.685097, lat = 41.763710, zoom = 11) %>%
+addProviderTiles("Stamen.Toner") %>% 
+addMarkers(lng=~lon$lon_splat, lat=~lat$lat_splat, 
+popup = ~as.character(UCR_2_Description), 
+clusterOptions = markerClusterOptions())
+m  
+})
+
+```
+
+
+### Data Table
+
+```{r, dt}
+
+DT::renderDataTable({
+
+DT::datatable(data_sample(), options = list(bPaginate = TRUE,
+pageLength = 15
+))
+})
+```
+
+Visualization
+=====================================
+
+```{r, viz_dat, message=FALSE, warning=FALSE, include=FALSE}
+category <- dplyr::count(data_in, UCR_1_Category)
+
+neighborhood <- dplyr::count(data_in, Neighborhood)
+
+```
+
+Column
+-------------------------------------
+
+### Chart 1: Overall Count of Incidents of Crime Type
+
+```{r, viz_display1}
+g1 <- ggplot(category, aes(x=reorder(UCR_1_Category, n), y = n)) +
+      geom_bar(stat="identity", fill="dodgerblue") +
+      theme(axis.text.x  =element_blank()) +
+      coord_flip() +
+      labs(title="Overall Count of Incidents of Crime Type", x = "", y = "Count")
+
+ggplotly(g1)
+
+```   
+
+Column
+----------------------------------
+
+### Chart 2: Overall Count of Incidents of Crime by Neighborhood
+
+```{r, viz_display2}
+g2 <- ggplot(neighborhood, aes(x=reorder(Neighborhood, n), y = n)) +
+      geom_bar(stat="identity", fill="salmon") +
+      theme(axis.text.x  =element_blank()) +
+      coord_flip() +
+      labs(title="Overall Count of Incidents by Neighborhood", 
+      x = "", y = "Count")
+
+ggplotly(g2)
+
+```
+
+
+
+
+
+Analysis {.storyboard}
+=========================================
+
+### Frame 1
+
+```{r}
+```
+
+### Frame 2
+
+```{r}
+```
+
+### Frame 3
+
+```{r}
+```
+
+
+About
+=====================================
+
+
+This dataset reflects reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis. Should you have questions about this dataset, you may contact the Crime Analysis Division of the Hartford Police Department at 860.757.4020 or policechief@Hartford.gov. 
+
+Full Disclaimer available [Source](https://data.hartford.gov/Public-Safety/Police-Incidents-01012005-to-Current/889t-nwfu)
+
+
+
