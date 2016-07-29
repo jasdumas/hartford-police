@@ -2,7 +2,9 @@
 title: "Hartford Open Data: Live Police Incidents"
 output: 
   flexdashboard::flex_dashboard:
+    theme: yeti
   orientation: columns
+  
 vertical_layout: fill
 social: [ "twitter", "menu" ]
 source_code: embed
@@ -28,7 +30,8 @@ This dataset reflects reported incidents of crime (with the exception of sexual 
 
 ```{r, shiny_in}
 # shiny inputs defined here
-selectInput("year", "<b>Select Year: </b>", choices =c(2005, 2006, 2007, 
+hr()
+selectInput("year", "Select Year: ", choices =c(2005, 2006, 2007, 
 2008, 2009, 2010,
 2011, 2012, 2013, 
 2014, 2015) ,
@@ -124,64 +127,105 @@ Visualization
 ```{r, viz_dat, message=FALSE, warning=FALSE, include=FALSE}
 category <- dplyr::count(data_in, UCR_1_Category)
 
-neighborhood <- dplyr::count(data_in, Neighborhood)
+neighborhood <- dplyr::count(data_in, UCR_1_Category, Neighborhood)
+
+# g1 <- ggplot(category, aes(x=reorder(UCR_1_Category, n), y = n)) +
+#       geom_bar(stat="identity", fill="dodgerblue") +
+#       theme(axis.text.x  =element_blank()) +
+#       coord_flip() +
+#       labs(title="Overall Count of Incidents of Crime Type", x = "", y = "Count")
+
+#ggplotly(g1)
 
 ```
 
-Column
--------------------------------------
 
-### Chart 1: Overall Count of Incidents of Crime Type
 
-```{r, viz_display1}
-g1 <- ggplot(category, aes(x=reorder(UCR_1_Category, n), y = n)) +
-      geom_bar(stat="identity", fill="dodgerblue") +
-      theme(axis.text.x  =element_blank()) +
-      coord_flip() +
-      labs(title="Overall Count of Incidents of Crime Type", x = "", y = "Count")
-
-ggplotly(g1)
-
-```   
-
-Column
-----------------------------------
-
-### Chart 2: Overall Count of Incidents of Crime by Neighborhood
+### Overall Count of Incidents of Crime by Neighborhood
 
 ```{r, viz_display2}
-g2 <- ggplot(neighborhood, aes(x=reorder(Neighborhood, n), y = n)) +
-      geom_bar(stat="identity", fill="salmon") +
+g2 <- ggplot(neighborhood, aes(x=reorder(Neighborhood, n), y = n, fill=factor(UCR_1_Category))) +
+      geom_bar(stat="identity") +
       theme(axis.text.x  =element_blank()) +
+      theme(legend.title=element_blank()) +
       coord_flip() +
-      labs(title="Overall Count of Incidents by Neighborhood", 
+      labs(title="Overall Count of Incidents by Crime Type & Neighborhood", 
       x = "", y = "Count")
-
+g2
 ggplotly(g2)
 
 ```
 
 
-
-
-
 Analysis {.storyboard}
 =========================================
 
-### Frame 1
+###  **Has Hartford Become Safer?**
 
 ```{r}
+safe <- dplyr::count(data_in, year)
+
+p1 <- plot_ly(safe, x = year, y = n, type = "scatter", mode = "markers+lines")
+
+p1 <- layout(p1, title="Crime Reported by Year")
+
+p1
+
 ```
 
-### Frame 2
+### **Has Hartford Seen a Decrease in Violent Crimes?** 
+
+**Can lower amounts of reported crime incidents be related to fewer violent crimes?**
 
 ```{r}
+violent <- dplyr::count(data_in, UCR_1_Category, year)
+
+really_violent <- c("  AGGRAVATED ASSAULT", "  ROBBERY", "  HOMICIDE", "  LARCENY")
+
+violent2 <- violent[violent$UCR_1_Category %in% really_violent,]
+
+vi <-  ggplot(data=violent2, aes(x=year, y=n, group=UCR_1_Category, color=UCR_1_Category)) +
+    geom_line() +
+    geom_point() +
+    theme(legend.position="none")
+
+ggplotly(vi)
+
+
 ```
 
-### Frame 3
+### **Guns in Hartford**
+
+**As a National issue about gun control and safety, [Conneticut has enacted the toughest restrictions on purchasing weapons and ammunition](https://en.wikipedia.org/wiki/Gun_laws_in_Connecticut) since 2012.**
 
 ```{r}
+
+gun_related <- c("  SHOOTING", "  SHOTS FIRED", "  SHOTS FIRED CONFIRMED", "  SHOTS FIRED UNCONFIRMED")
+
 ```
+
+
+### **The Drug Epidemic**
+
+```{r}
+drugs <- c("  DRUG OFFENSES")
+
+drugs_df <- dplyr::count(data_in, UCR_1_Category, year, Neighborhood) 
+
+drugs_df <- drugs_df[drugs_df$UCR_1_Category %in% drugs, ]
+
+d <- ggplot(drugs_df, aes(x=Neighborhood, y=n, group=year)) +
+     geom_bar(stat="identity") +
+     facet_wrap(~ year) +
+     theme_minimal() #+
+    # geom_text()
+
+ggplotly(d)
+
+```
+
+### Most Crime-Ridden Neighboorhoods
+
 
 
 About
