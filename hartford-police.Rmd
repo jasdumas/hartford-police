@@ -1,5 +1,5 @@
 ---
-title: "Hartford Open Data: Police Incidents"
+title: "Reported Crime Incidents in Hartford, CT"
 author: "By Jasmine Dumas"
 output: 
   flexdashboard::flex_dashboard:
@@ -26,7 +26,7 @@ library(RCurl)
 Sidebar {.sidebar}
 =====================================
   
-Explore reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis.
+Explore reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days from the [Hartford Open Data Portal](https://data.hartford.gov/). 
 
 
 ```{r, shiny_in}
@@ -43,7 +43,7 @@ hr()
 
 ```
 
-Made for fun by [Jasmine Dumas](http://jasdumas.github.io/).
+Made for fun & interest by [Jasmine Dumas](http://jasdumas.github.io/).
 
 
 Explore
