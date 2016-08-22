@@ -1,13 +1,13 @@
 ---
-title: "Hartford Open Data: Live Police Incidents"
+title: "Hartford Open Data: Police Incidents"
+author: "By Jasmine Dumas"
 output: 
   flexdashboard::flex_dashboard:
     theme: yeti
-  orientation: columns
-  
-vertical_layout: fill
-social: [ "twitter", "menu" ]
-source_code: embed
+    orientation: columns
+    vertical_layout: fill
+    social: [ "twitter", "facebook", "menu" ]
+    source_code: embed
 runtime: shiny
 ---
   
@@ -20,31 +20,41 @@ library(lubridate)
 library(ggplot2)
 library(plotly)
 library(shiny)
+library(RCurl)
 ```
 
 Sidebar {.sidebar}
 =====================================
   
-This dataset reflects reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis.
+Explore reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis.
 
 
 ```{r, shiny_in}
 # shiny inputs defined here
 hr()
+
 selectInput("year", "Select Year: ", choices =c(2005, 2006, 2007, 
 2008, 2009, 2010,
 2011, 2012, 2013, 
 2014, 2015) ,
 selected = 2015)
 
+hr()
+
 ```
 
+Made for fun by [Jasmine Dumas](http://jasdumas.github.io/).
 
 
 Explore
 =====================================
 
 ```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+# URL = "https://data.hartford.gov/api/views/889t-nwfu/rows.csv?accessType=DOWNLOAD"
+# x <- getURL(URL, ssl.verifypeer = FALSE)
+# out <- read_csv("https://data.hartford.gov/Public-Safety/Police-Incidents-01012005-to-Current/889t-nwfu")
+
 data_in <- read_csv("Police_Incidents_01012005_to_Current.csv") 
 ##############################
 # clean up lat and longitude #
@@ -121,61 +131,49 @@ pageLength = 15
 })
 ```
 
-Visualization
+
+
+Data Visualization {.storyboard}
 =====================================
 
-```{r, viz_dat, message=FALSE, warning=FALSE, include=FALSE}
+### **Crime by Neighborhood:** Which neighboorhoods have had the most reported incidents?
+
+```{r, viz_display2}
 category <- dplyr::count(data_in, UCR_1_Category)
 
 neighborhood <- dplyr::count(data_in, UCR_1_Category, Neighborhood)
 
-# g1 <- ggplot(category, aes(x=reorder(UCR_1_Category, n), y = n)) +
-#       geom_bar(stat="identity", fill="dodgerblue") +
-#       theme(axis.text.x  =element_blank()) +
-#       coord_flip() +
-#       labs(title="Overall Count of Incidents of Crime Type", x = "", y = "Count")
-
-#ggplotly(g1)
-
-```
-
-
-
-### Overall Count of Incidents of Crime by Neighborhood
-
-```{r, viz_display2}
 g2 <- ggplot(neighborhood, aes(x=reorder(Neighborhood, n), y = n, fill=factor(UCR_1_Category))) +
       geom_bar(stat="identity") +
       theme(axis.text.x  =element_blank()) +
       theme(legend.title=element_blank()) +
+      theme_bw() +
       coord_flip() +
       labs(title="Overall Count of Incidents by Crime Type & Neighborhood", 
       x = "", y = "Count")
-g2
+
 ggplotly(g2)
 
 ```
 
 
-Analysis {.storyboard}
-=========================================
-
-###  **Has Hartford Become Safer?**
+###  **Decrease in Reported Crimes:** Has the amount of reported crime incidents been decreasing over the years?
 
 ```{r}
 safe <- dplyr::count(data_in, year)
 
-p1 <- plot_ly(safe, x = year, y = n, type = "scatter", mode = "markers+lines")
+p1 <- ggplot(safe, aes(x = year, y = n)) +
+             geom_line(color = "dodgerblue") +
+             geom_point(color = "dodgerblue") +
+             theme_bw() +
+             labs(title = "Annual Amount of Reported Incidents", x = "", y = "Count")
 
-p1 <- layout(p1, title="Crime Reported by Year")
-
-p1
+ggplotly(p1)
 
 ```
 
-### **Has Hartford Seen a Decrease in Violent Crimes?** 
 
-**Can lower amounts of reported crime incidents be related to fewer violent crimes?**
+### **Decrease in Violent Crimes:** Can lower amounts of reported crime incidents be related to fewer violent crimes?
 
 ```{r}
 violent <- dplyr::count(data_in, UCR_1_Category, year)
@@ -187,54 +185,63 @@ violent2 <- violent[violent$UCR_1_Category %in% really_violent,]
 vi <-  ggplot(data=violent2, aes(x=year, y=n, group=UCR_1_Category, color=UCR_1_Category)) +
     geom_line() +
     geom_point() +
-    theme(legend.position="none")
+    theme(legend.position="none") +
+    theme_bw() +
+    labs(title = "Annual Amount of Reported Violent Crimes", x = "", y = "Count")
 
 ggplotly(vi)
-
-
 ```
 
-### **Guns in Hartford**
-
-**As a National issue about gun control and safety, [Conneticut has enacted the toughest restrictions on purchasing weapons and ammunition](https://en.wikipedia.org/wiki/Gun_laws_in_Connecticut) since 2012.**
+### **Guns in Hartford:** As a National issue about gun control and safety, [Conneticut has enacted the toughest restrictions on purchasing weapons and ammunition](https://en.wikipedia.org/wiki/Gun_laws_in_Connecticut) since 2012.
 
 ```{r}
-
 gun_related <- c("  SHOOTING", "  SHOTS FIRED", "  SHOTS FIRED CONFIRMED", "  SHOTS FIRED UNCONFIRMED")
+
+gun_df <- dplyr::count(data_in, UCR_1_Category, year)
+gun_df2 <- gun_df[gun_df$UCR_1_Category %in% gun_related, ]
+
+gu <- ggplot(gun_df2, aes(x = UCR_1_Category)) +
+             geom_bar(fill = "#536267") +
+             theme_bw() +
+             labs(title = "Amount of Gun-Related Reported Crimes", x = "", y = "Count")
+
+ggplotly(gu)
 
 ```
 
 
-### **The Drug Epidemic**
+### **The Drug Epidemic:** [Connecticut](http://overdose.trendct.org/) continues to see a sharp rise in heroin and other opioid-related deaths.
 
 ```{r}
 drugs <- c("  DRUG OFFENSES")
 
-drugs_df <- dplyr::count(data_in, UCR_1_Category, year, Neighborhood) 
+drugs_df <- dplyr::count(data_in, UCR_1_Category, Neighborhood) 
 
 drugs_df <- drugs_df[drugs_df$UCR_1_Category %in% drugs, ]
 
-d <- ggplot(drugs_df, aes(x=Neighborhood, y=n, group=year)) +
-     geom_bar(stat="identity") +
-     facet_wrap(~ year) +
-     theme_minimal() #+
-    # geom_text()
+##
+d <- ggplot(drugs_df, aes(x=reorder(Neighborhood, n), y = n)) +
+     geom_bar(stat = "identity", fill = "#6699CC") +
+     theme_bw() +
+     coord_flip() +
+     labs(title = "Amount of Drug-Related Reported Crimes", y = "", x = "") 
 
 ggplotly(d)
 
 ```
 
-### Most Crime-Ridden Neighboorhoods
 
 
-
-About
+Details
 =====================================
 
 
-This dataset reflects reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis. Should you have questions about this dataset, you may contact the Crime Analysis Division of the Hartford Police Department at 860.757.4020 or policechief@Hartford.gov. 
+* This dataset reflects reported incidents of crime (with the exception of sexual assaults, which are excluded by statute) that occurred in the City of Hartford from 2005 to the present, minus the most recent ten days. Data is extracted from the City of Hartford Police Department's CrimeView database on a daily basis. Should you have questions about this dataset, you may contact the Crime Analysis Division of the Hartford Police Department at 860.757.4020 or policechief@Hartford.gov. 
 
-Full Disclaimer available [Source](https://data.hartford.gov/Public-Safety/Police-Incidents-01012005-to-Current/889t-nwfu)
+* Full Disclaimer available at [https://data.hartford.gov/Public-Safety/Police-Incidents-01012005-to-Current/889t-nwfu](https://data.hartford.gov/Public-Safety/Police-Incidents-01012005-to-Current/889t-nwfu)
 
+* [Socrata Hartford Police Codes (Download)](https://data.hartford.gov/api/views/889t-nwfu/files/BOGvjBIm4--AIkVZZIBXBljNj-PrylsI5BxLEEQ4Lms?download=true&filename=Socrata%20HPD%20UCR%20Codes.pdf)
+
+* Project inspiration: [Real-time Dallas Police Calls](https://trestletech.shinyapps.io/dallas-police/)
 
 
