@@ -1,9 +1,10 @@
 name: hartford-crime
+title:
 account: jasminedumas
 server: shinyapps.io
 appId: 121496
-bundleId: 538142
+bundleId: 736830
 url: https://jasminedumas.shinyapps.io/hartford-crime/
-when: 1471896643.80709
+when: 1488894811.22928
 asMultiple: FALSE
 asStatic: FALSE
